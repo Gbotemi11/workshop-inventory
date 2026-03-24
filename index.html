@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workshop Inventory – Weekly Check</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111418;
+    --surface2: #181d24;
+    --border: #252d38;
+    --accent: #00e5ff;
+    --accent2: #ff6b35;
+    --green: #39ff14;
+    --yellow: #ffd600;
+    --red: #ff2d55;
+    --text: #d4dde8;
+    --text-dim: #5a6a7a;
+    --text-mono: #7ecfff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 32px;
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 16px;
+  }
+  .header-left { display: flex; flex-direction: column; gap: 4px; }
+  .logo-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  h1 {
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 900;
+    letter-spacing: -1px;
+    line-height: 1;
+    color: #fff;
+    text-transform: uppercase;
+  }
+  h1 span { color: var(--accent); }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .week-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+  #week-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-mono);
+    padding: 6px 10px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  #week-input:focus { outline: none; border-color: var(--accent); }
+
+  .btn {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 8px 18px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: #33eeff; }
+  .btn-danger { background: transparent; border: 1px solid var(--red); color: var(--red); }
+  .btn-danger:hover { background: var(--red); color: #fff; }
+  .btn-export { background: transparent; border: 1px solid var(--accent2); color: var(--accent2); }
+  .btn-export:hover { background: var(--accent2); color: #fff; }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 120px;
+  }
+  .stat-card .val {
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 1;
+  }
+  .stat-card .lbl {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .val-ok   { color: var(--green); }
+  .val-miss { color: var(--red); }
+  .val-part { color: var(--yellow); }
+  .val-all  { color: var(--accent); }
+
+  /* ── SECTION ── */
+  .section { margin-bottom: 32px; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent2);
+  }
+  .section-count {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  /* ── TABLE ── */
+  .inv-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .inv-table thead tr {
+    background: var(--surface2);
+    border-bottom: 2px solid var(--accent);
+  }
+  .inv-table th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .inv-table th.center { text-align: center; }
+
+  .inv-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background .1s;
+  }
+  .inv-table tbody tr:hover { background: rgba(0,229,255,0.03); }
+
+  .inv-table td {
+    padding: 9px 14px;
+    vertical-align: middle;
+  }
+
+  .item-name {
+    font-weight: 600;
+    color: #e8edf3;
+  }
+  .item-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  .expected {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--text-mono);
+    text-align: center;
+    font-size: 15px;
+    font-weight: bold;
+  }
+
+  /* qty input */
+  .qty-input {
+    width: 60px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: #fff;
+    text-align: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 15px;
+    font-weight: bold;
+    padding: 5px 4px;
+    border-radius: 4px;
+    display: block;
+    margin: 0 auto;
+    transition: border-color .15s;
+  }
+  .qty-input:focus { outline: none; border-color: var(--accent); }
+  .qty-input.over  { border-color: var(--yellow); color: var(--yellow); }
+  .qty-input.exact { border-color: var(--green);  color: var(--green); }
+  .qty-input.under { border-color: var(--red);    color: var(--red); }
+
+  /* status pill */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .pill-ok     { background: rgba(57,255,20,.12);   color: var(--green); border: 1px solid var(--green); }
+  .pill-miss   { background: rgba(255,45,85,.12);   color: var(--red);   border: 1px solid var(--red); }
+  .pill-over   { background: rgba(255,214,0,.12);   color: var(--yellow);border: 1px solid var(--yellow); }
+  .pill-pending{ background: rgba(90,106,122,.12);  color: var(--text-dim); border: 1px solid var(--border); }
+
+  .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+  .dot-ok   { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dot-miss { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+  .dot-over { background: var(--yellow);box-shadow: 0 0 6px var(--yellow); }
+  .dot-pend { background: var(--text-dim); }
+
+  .notes-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed var(--border);
+    color: var(--text-dim);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    width: 140px;
+    padding: 3px 4px;
+    transition: border-color .15s;
+  }
+  .notes-input:focus { outline: none; border-color: var(--accent); color: var(--text); }
+  .notes-input::placeholder { color: var(--text-dim); opacity: .5; }
+
+  /* ── FOOTER ── */
+  .footer {
+    margin-top: 40px;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .footer-info {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+
+  /* ── ADD ITEM MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.75);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 28px 32px;
+    width: min(480px, 95vw);
+    box-shadow: 0 0 40px rgba(0,229,255,.15);
+    animation: popIn .2s ease;
+  }
+  @keyframes popIn {
+    from { transform: scale(.92); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+  .modal-title {
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+  .form-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
+  .form-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .form-input, .form-select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    padding: 9px 12px;
+    border-radius: 4px;
+    width: 100%;
+    transition: border-color .15s;
+  }
+  .form-input:focus, .form-select:focus { outline: none; border-color: var(--accent); }
+  .form-select option { background: var(--surface2); }
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 24px; justify-content: flex-end; }
+
+  /* NEW badge on user-added items */
+  .badge-new {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    background: rgba(255,107,53,.2);
+    color: var(--accent2);
+    border: 1px solid var(--accent2);
+    border-radius: 3px;
+    padding: 1px 5px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  /* delete row btn */
+  .del-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: all .1s;
+  }
+  .del-btn:hover { color: var(--red); background: rgba(255,45,85,.1); }
+
+  /* "Add Item" section buttons row */
+  .add-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .btn-add { background: transparent; border: 1px solid var(--green); color: var(--green); }
+  .btn-add:hover { background: var(--green); color: #000; }
+
+  @media print {
+    body { background: #fff; color: #000; padding: 10px; }
+    .btn, #week-input, .del-btn, .modal-overlay { display: none !important; }
+    .inv-table { font-size: 11px; }
+    .qty-input { border: 1px solid #ccc; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <span class="logo-tag">◈ Lab Inventory System</span>
+    <h1>Workshop <span>Check</span></h1>
+  </div>
+  <div class="header-controls">
+    <span class="week-label">WEEK OF</span>
+    <input type="week" id="week-input">
+    <button class="btn btn-add" onclick="openModal()">＋ Add Item</button>
+    <button class="btn btn-primary" onclick="resetAll()">↺ Reset</button>
+    <button class="btn btn-export" onclick="window.print()">⎙ Print</button>
+    <button class="btn btn-danger" onclick="clearAll()">✕ Clear</button>
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-card"><div class="val val-all" id="stat-total">0</div><div class="lbl">Total Items</div></div>
+  <div class="stat-card"><div class="val val-ok"   id="stat-ok">0</div><div class="lbl">Complete</div></div>
+  <div class="stat-card"><div class="val val-miss" id="stat-miss">0</div><div class="lbl">Missing / Low</div></div>
+  <div class="stat-card"><div class="val val-part" id="stat-over">0</div><div class="lbl">Over Count</div></div>
+  <div class="stat-card"><div class="val" style="color:var(--text-dim)" id="stat-pend">0</div><div class="lbl">Unchecked</div></div>
+</div>
+
+<!-- ────────────── WORKSHOP TOOLS ────────────── -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">🔧 Workshop Tools</span>
+    <span class="section-count" id="tools-count"></span>
+  </div>
+  <table class="inv-table" id="tools-table">
+    <thead>
+      <tr>
+        <th style="width:40px">#</th>
+        <th>Item</th>
+        <th class="center" style="width:90px">Expected</th>
+        <th class="center" style="width:90px">Counted</th>
+        <th class="center" style="width:130px">Status</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- ────────────── ELECTRONIC COMPONENTS ────────────── -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">⚡ Electronic Components</span>
+    <span class="section-count" id="elec-count"></span>
+  </div>
+  <table class="inv-table" id="elec-table">
+    <thead>
+      <tr>
+        <th style="width:40px">#</th>
+        <th>Item</th>
+        <th class="center" style="width:90px">Expected</th>
+        <th class="center" style="width:90px">Counted</th>
+        <th class="center" style="width:130px">Status</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- ────────────── ADD ITEM MODAL ────────────── -->
+<div class="modal-overlay" id="add-modal" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title">＋ Register New Item</div>
+
+    <div class="form-row">
+      <label class="form-label">Category</label>
+      <select class="form-select" id="new-category">
+        <option value="T">Workshop Tools</option>
+        <option value="E">Electronic Components</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label class="form-label">Item Name</label>
+      <input class="form-input" type="text" id="new-name" placeholder="e.g. INGCO Impact Drill">
+    </div>
+
+    <div class="form-row-2">
+      <div class="form-row" style="margin-bottom:0">
+        <label class="form-label">Quantity</label>
+        <input class="form-input" type="number" id="new-qty" min="1" value="1" placeholder="1">
+      </div>
+      <div class="form-row" style="margin-bottom:0">
+        <label class="form-label">Date Acquired</label>
+        <input class="form-input" type="date" id="new-date">
+      </div>
+    </div>
+
+    <div class="form-row" style="margin-top:12px">
+      <label class="form-label">Note (optional)</label>
+      <input class="form-input" type="text" id="new-note" placeholder="e.g. Purchased at Wema market">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-add" onclick="addItem()">＋ Add to Inventory</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <span class="footer-info" id="footer-date"></span>
+  <span class="footer-info">PROSIGHT LAB · INVENTORY TRACKER v1.0</span>
+</div>
+
+<script>
+// ── BASE DATA ──
+const BASE_TOOLS = [
+  { name: "INGCO Screwdriver Set", qty: 6 },
+  { name: "MEG-PRO Euro Type Wrench Set", qty: 7 },
+  { name: "Red Hack Saw", qty: 1 },
+  { name: "Yellow Hack Saw", qty: 1 },
+  { name: "INGCO Measuring Tape – 10m", qty: 2 },
+  { name: "INGCO Measuring Tape – 5m", qty: 2 },
+  { name: "Total Industrial Electric Jigsaw", qty: 1 },
+  { name: "Mini Pliers – Red", qty: 2 },
+  { name: "Mini Pliers – Yellow", qty: 1 },
+  { name: "Mini Pliers – Orange", qty: 1 },
+  { name: "Total Utility Knife", qty: 1 },
+  { name: "Total Industrial Diagonal Cutting Pliers", qty: 1 },
+  { name: "Total Combination Pliers 180mm", qty: 1 },
+  { name: "Total THT24616 Bent Nose Pliers", qty: 1 },
+  { name: "Multimeter", qty: 2 },
+  { name: "Total Mini Grinder (TG513326)", qty: 1 },
+  { name: "Precision Screwdriver Set", qty: 6 },
+  { name: "Mini Die Grinder Tool Kit", qty: 1 },
+  { name: "TFT Screen", qty: 1 },
+  { name: "Yellow Try Square", qty: 1 },
+  { name: "Aluminum T-Square", qty: 1 },
+  { name: "Black Framing Square", qty: 1 },
+  { name: "200cm Ruler", qty: 1 },
+  { name: "Robot Car Chassis", qty: 4 },
+  { name: "Transparent Cell Tape", qty: 1 },
+  { name: "Red Electric Tape", qty: 1 },
+  { name: "Paper Tape", qty: 1 },
+  { name: "Hot Glue Gun Sticks", qty: 3 },
+  { name: "Tweezers", qty: 4 },
+  { name: "Helmets", qty: 2 },
+];
+
+const BASE_ELECTRONICS = [
+  { name: "HC-SR501 PIR Motion Sensor Module", qty: 1 },
+  { name: "5V 1-Channel Relay Module", qty: 1 },
+  { name: "KY-037 Sound Sensor Module", qty: 1 },
+  { name: "ESP8266 ESP-01S WiFi Relay Module", qty: 1 },
+  { name: "KY-009 RGB SMD LED Module", qty: 1 },
+  { name: "ESP8266 ESP-01S Wi-Fi Transceiver Module", qty: 1 },
+  { name: "Hall Effect Magnetic Sensor Module", qty: 1 },
+  { name: "Generic LM35D Analog Temperature Sensor", qty: 1 },
+  { name: "Raspberry Pi Camera Module Rev 1.3", qty: 1 },
+  { name: "Raspberry Pi Camera Module V2", qty: 1 },
+  { name: "JDY-23 Bluetooth 5.0 Module", qty: 1 },
+  { name: "IR Infrared Flame Detection Sensor Module", qty: 1 },
+  { name: "ESP32-CAM Development Board", qty: 1 },
+  { name: "MB102 Breadboard Power Supply Module", qty: 1 },
+  { name: "KY-023 Joystick Module", qty: 1 },
+  { name: "RPi 4B Night Vision Camera Module", qty: 1 },
+  { name: "KY-008 Laser Transmitter Module", qty: 1 },
+  { name: "Grayscale Sensor Module", qty: 1 },
+  { name: "4-Pin RGB LED Module", qty: 1 },
+  { name: "KY-034 7 Color Flashing LED Module", qty: 1 },
+  { name: "KY-027 Magic Light Cup Sensor Module", qty: 1 },
+  { name: "12×12 Tactile Push Button", qty: 1 },
+  { name: "Soil Moisture Sensor Module", qty: 1 },
+  { name: "TM1637 4-Digit 7-Segment LED Display", qty: 1 },
+  { name: "8×8 LED Dot Matrix Display", qty: 1 },
+  { name: "DSK MH-RD Raindrops Module", qty: 1 },
+  { name: "16×2 LCD Module", qty: 2 },
+  { name: "28BYJ-48 4-Phase Stepper Motor", qty: 1 },
+  { name: "24GHz Microwave Radar Sensor Module", qty: 1 },
+  { name: "IR Obstacle Avoidance Sensor Module", qty: 1 },
+  { name: "KY-031 Knock Sensor Module", qty: 1 },
+  { name: "SW-520D Tilt Sensor Module", qty: 1 },
+  { name: "Arduino 3mm Two Colour LED Module", qty: 1 },
+  { name: "LM393 Voltage Comparator Sensor Module", qty: 1 },
+  { name: "ULN2003 Driver Board", qty: 1 },
+  { name: "Water Level Sensor Module", qty: 1 },
+  { name: "KY-003 Hall Effect Sensor Module", qty: 1 },
+  { name: "RFID Sensor Module + Card", qty: 1 },
+  { name: "4×4 Matrix Membrane Keypad", qty: 1 },
+  { name: "IR Wireless Remote Control Module Kit", qty: 2 },
+  { name: "TCRT5000 IR Reflective Sensor Module", qty: 1 },
+  { name: "Mini DC Motor", qty: 1 },
+];
+
+// ── CUSTOM ITEMS (persist globally, not per-week) ──
+const CUSTOM_KEY = 'inv_custom_items';
+
+function loadCustomItems() {
+  return JSON.parse(localStorage.getItem(CUSTOM_KEY) || '{"T":[],"E":[]}');
+}
+function saveCustomItems(obj) {
+  localStorage.setItem(CUSTOM_KEY, JSON.stringify(obj));
+}
+
+function getFullList(prefix) {
+  const custom = loadCustomItems();
+  const base   = prefix === 'T' ? BASE_TOOLS : BASE_ELECTRONICS;
+  return [...base, ...(custom[prefix] || [])];
+}
+
+// ── STORAGE KEY (per week) ──
+const storageKey = () => 'inv_' + (document.getElementById('week-input').value || 'unsaved');
+
+// ── RENDER TABLE ──
+function renderTable(tableId, prefix) {
+  const data  = getFullList(prefix);
+  const tbody = document.querySelector(`#${tableId} tbody`);
+  const saved = JSON.parse(localStorage.getItem(storageKey()) || '{}');
+  const base  = prefix === 'T' ? BASE_TOOLS : BASE_ELECTRONICS;
+  tbody.innerHTML = '';
+
+  data.forEach((item, i) => {
+    const key     = `${prefix}_${i}`;
+    const counted = saved[key] !== undefined ? saved[key] : '';
+    const note    = saved[`${key}_note`] || '';
+    const isNew   = i >= base.length;
+    const acquired = item.acquired ? `<div class="item-sub">acquired ${item.acquired}</div>` : '';
+    const newBadge = isNew ? `<span class="badge-new">NEW</span>` : '';
+    const delBtn   = isNew
+      ? `<button class="del-btn" title="Remove item" onclick="removeCustomItem('${prefix}',${i - base.length})">✕</button>`
+      : '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:var(--text-dim);font-family:'Share Tech Mono',monospace;font-size:11px">${String(i+1).padStart(2,'0')}</td>
+      <td>
+        <div class="item-name">${item.name}${newBadge}</div>
+        ${acquired}
+      </td>
+      <td class="expected">${item.qty}</td>
+      <td style="text-align:center">
+        <input class="qty-input" type="number" min="0" data-key="${key}" data-exp="${item.qty}" value="${counted}" placeholder="—">
+      </td>
+      <td style="text-align:center">
+        <span class="status-pill" id="pill_${key}">${getPill(counted, item.qty)}</span>
+      </td>
+      <td style="display:flex;align-items:center;gap:6px">
+        <input class="notes-input" type="text" data-key="${key}_note" placeholder="add note…" value="${note}">
+        ${delBtn}
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  colorize(tableId);
+}
+
+function getPill(val, exp) {
+  if (val === '' || val === null || val === undefined) return `<span class="dot dot-pend"></span> PENDING`;
+  const n = parseInt(val);
+  if (n === exp)  return `<span class="dot dot-ok"></span> OK`;
+  if (n > exp)    return `<span class="dot dot-over"></span> OVER`;
+  return `<span class="dot dot-miss"></span> MISSING`;
+}
+
+function colorize(tableId) {
+  document.querySelectorAll(`#${tableId} .qty-input`).forEach(inp => {
+    const exp = parseInt(inp.dataset.exp);
+    const val = inp.value;
+    inp.classList.remove('over','exact','under');
+    if (val === '') return;
+    const n = parseInt(val);
+    if (n === exp)  inp.classList.add('exact');
+    else if (n > exp) inp.classList.add('over');
+    else inp.classList.add('under');
+    document.getElementById('pill_' + inp.dataset.key).innerHTML = getPill(val, exp);
+  });
+  updateStats();
+}
+
+// ── EVENTS (delegated) ──
+document.addEventListener('input', e => {
+  if (!e.target.matches('.qty-input, .notes-input')) return;
+  const saved = JSON.parse(localStorage.getItem(storageKey()) || '{}');
+  saved[e.target.dataset.key] = e.target.value;
+  localStorage.setItem(storageKey(), JSON.stringify(saved));
+  if (e.target.matches('.qty-input')) colorize(e.target.closest('table').id);
+});
+
+// ── STATS ──
+function updateStats() {
+  const all = document.querySelectorAll('.qty-input');
+  let ok=0, miss=0, over=0, pend=0;
+  all.forEach(inp => {
+    const exp = parseInt(inp.dataset.exp);
+    if (inp.value === '') { pend++; return; }
+    const n = parseInt(inp.value);
+    if (n === exp)   ok++;
+    else if (n > exp) over++;
+    else miss++;
+  });
+  document.getElementById('stat-total').textContent = all.length;
+  document.getElementById('stat-ok').textContent    = ok;
+  document.getElementById('stat-miss').textContent  = miss;
+  document.getElementById('stat-over').textContent  = over;
+  document.getElementById('stat-pend').textContent  = pend;
+
+  const tCount = getFullList('T').length;
+  const eCount = getFullList('E').length;
+  document.getElementById('tools-count').textContent = `${tCount} items`;
+  document.getElementById('elec-count').textContent  = `${eCount} items`;
+}
+
+// ── WEEK CHANGE ──
+document.getElementById('week-input').addEventListener('change', () => {
+  renderTable('tools-table', 'T');
+  renderTable('elec-table',  'E');
+  updateStats();
+});
+
+// ── RESET ──
+function resetAll() {
+  if (!confirm('Mark all items as fully present?')) return;
+  const saved = {};
+  getFullList('T').forEach((it, i) => { saved[`T_${i}`] = it.qty; });
+  getFullList('E').forEach((it, i) => { saved[`E_${i}`] = it.qty; });
+  localStorage.setItem(storageKey(), JSON.stringify(saved));
+  renderTable('tools-table', 'T');
+  renderTable('elec-table',  'E');
+}
+
+// ── CLEAR ──
+function clearAll() {
+  if (!confirm('Clear all counts for this week?')) return;
+  localStorage.removeItem(storageKey());
+  renderTable('tools-table', 'T');
+  renderTable('elec-table',  'E');
+}
+
+// ── MODAL ──
+function openModal() {
+  document.getElementById('new-name').value = '';
+  document.getElementById('new-qty').value  = '1';
+  document.getElementById('new-note').value = '';
+  document.getElementById('new-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('add-modal').classList.add('open');
+  setTimeout(() => document.getElementById('new-name').focus(), 100);
+}
+function closeModal() {
+  document.getElementById('add-modal').classList.remove('open');
+}
+function closeModalOutside(e) {
+  if (e.target === document.getElementById('add-modal')) closeModal();
+}
+
+function addItem() {
+  const name = document.getElementById('new-name').value.trim();
+  const qty  = parseInt(document.getElementById('new-qty').value) || 1;
+  const cat  = document.getElementById('new-category').value;
+  const note = document.getElementById('new-note').value.trim();
+  const date = document.getElementById('new-date').value;
+
+  if (!name) {
+    document.getElementById('new-name').focus();
+    document.getElementById('new-name').style.borderColor = 'var(--red)';
+    return;
+  }
+  document.getElementById('new-name').style.borderColor = '';
+
+  const custom = loadCustomItems();
+  custom[cat].push({ name, qty, acquired: date, isCustom: true });
+  saveCustomItems(custom);
+
+  // pre-fill note if provided
+  if (note) {
+    const idx  = (cat === 'T' ? BASE_TOOLS : BASE_ELECTRONICS).length + custom[cat].length - 1;
+    const saved = JSON.parse(localStorage.getItem(storageKey()) || '{}');
+    saved[`${cat}_${idx}_note`] = note;
+    localStorage.setItem(storageKey(), JSON.stringify(saved));
+  }
+
+  closeModal();
+  renderTable(cat === 'T' ? 'tools-table' : 'elec-table', cat);
+  updateStats();
+
+  // flash the last added row
+  const tables = { T: 'tools-table', E: 'elec-table' };
+  const rows = document.querySelectorAll(`#${tables[cat]} tbody tr`);
+  if (rows.length) {
+    const last = rows[rows.length - 1];
+    last.style.background = 'rgba(255,107,53,.15)';
+    setTimeout(() => { last.style.background = ''; }, 1200);
+    last.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+// ── REMOVE CUSTOM ITEM ──
+function removeCustomItem(prefix, customIdx) {
+  const list = getFullList(prefix);
+  const base = prefix === 'T' ? BASE_TOOLS : BASE_ELECTRONICS;
+  const item = list[base.length + customIdx];
+  if (!confirm(`Remove "${item.name}" from inventory?`)) return;
+  const custom = loadCustomItems();
+  custom[prefix].splice(customIdx, 1);
+  saveCustomItems(custom);
+  renderTable(prefix === 'T' ? 'tools-table' : 'elec-table', prefix);
+  updateStats();
+}
+
+// ── INIT ──
+function getISOWeek() {
+  const d = new Date();
+  const yr = d.getFullYear();
+  const wk = Math.ceil(((d - new Date(yr,0,1)) / 86400000 + new Date(yr,0,1).getDay()+1) / 7);
+  return `${yr}-W${String(wk).padStart(2,'0')}`;
+}
+
+document.getElementById('week-input').value = getISOWeek();
+document.getElementById('footer-date').textContent =
+  'GENERATED: ' + new Date().toUTCString().toUpperCase();
+
+renderTable('tools-table', 'T');
+renderTable('elec-table',  'E');
+updateStats();
+</script>
+
+</body>
+</html>
