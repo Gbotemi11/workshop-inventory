@@ -378,6 +378,29 @@
   }
   .btn-add { background: transparent; border: 1px solid var(--green); color: var(--green); }
   .btn-add:hover { background: var(--green); color: #000; }
+  .btn-edit { background: transparent; border: 1px solid var(--yellow); color: var(--yellow); }
+  .btn-edit:hover { background: var(--yellow); color: #000; }
+  .btn-edit.active { background: var(--yellow); color: #000; }
+
+  /* edit mode */
+  body.edit-mode .inv-table tbody tr { border-left: 3px solid rgba(255,45,85,.4); }
+  body.edit-mode .inv-table tbody tr:hover { background: rgba(255,45,85,.05); }
+  .del-btn { display: none; }
+  body.edit-mode .del-btn { display: inline-flex; }
+  .edit-banner {
+    display: none;
+    background: rgba(255,45,85,.1);
+    border: 1px solid var(--red);
+    border-radius: 6px;
+    padding: 8px 16px;
+    margin-bottom: 16px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--red);
+    text-transform: uppercase;
+  }
+  body.edit-mode .edit-banner { display: block; }
 
   @media print {
     body { background: #fff; color: #000; padding: 10px; }
@@ -398,6 +421,7 @@
     <span class="week-label">WEEK OF</span>
     <input type="week" id="week-input">
     <button class="btn btn-add" onclick="openModal()">＋ Add Item</button>
+    <button class="btn btn-edit" id="edit-btn" onclick="toggleEditMode()">✎ Edit Mode</button>
     <button class="btn btn-primary" onclick="resetAll()">↺ Reset</button>
     <button class="btn btn-export" onclick="window.print()">⎙ Print</button>
     <button class="btn btn-danger" onclick="clearAll()">✕ Clear</button>
@@ -412,6 +436,9 @@
   <div class="stat-card"><div class="val val-part" id="stat-over">0</div><div class="lbl">Over Count</div></div>
   <div class="stat-card"><div class="val" style="color:var(--text-dim)" id="stat-pend">0</div><div class="lbl">Unchecked</div></div>
 </div>
+
+<!-- EDIT MODE BANNER -->
+<div class="edit-banner">⚠ Edit Mode Active — click ✕ on any row to remove it permanently</div>
 
 <!-- ────────────── WORKSHOP TOOLS ────────────── -->
 <div class="section">
@@ -591,10 +618,22 @@ function saveCustomItems(obj) {
   localStorage.setItem(CUSTOM_KEY, JSON.stringify(obj));
 }
 
+// ── REMOVED ITEMS (persist globally) ──
+const REMOVED_KEY = 'inv_removed_items';
+function loadRemoved() {
+  return JSON.parse(localStorage.getItem(REMOVED_KEY) || '{"T":[],"E":[]}');
+}
+function saveRemoved(obj) {
+  localStorage.setItem(REMOVED_KEY, JSON.stringify(obj));
+}
+
 function getFullList(prefix) {
-  const custom = loadCustomItems();
-  const base   = prefix === 'T' ? BASE_TOOLS : BASE_ELECTRONICS;
-  return [...base, ...(custom[prefix] || [])];
+  const custom  = loadCustomItems();
+  const removed = loadRemoved();
+  const base    = prefix === 'T' ? BASE_TOOLS : BASE_ELECTRONICS;
+  const removedNames = removed[prefix] || [];
+  const filteredBase = base.filter(it => !removedNames.includes(it.name));
+  return [...filteredBase, ...(custom[prefix] || [])];
 }
 
 // ── STORAGE KEY (per week) ──
@@ -602,22 +641,23 @@ const storageKey = () => 'inv_' + (document.getElementById('week-input').value |
 
 // ── RENDER TABLE ──
 function renderTable(tableId, prefix) {
-  const data  = getFullList(prefix);
-  const tbody = document.querySelector(`#${tableId} tbody`);
-  const saved = JSON.parse(localStorage.getItem(storageKey()) || '{}');
-  const base  = prefix === 'T' ? BASE_TOOLS : BASE_ELECTRONICS;
+  const data   = getFullList(prefix);
+  const tbody  = document.querySelector(`#${tableId} tbody`);
+  const saved  = JSON.parse(localStorage.getItem(storageKey()) || '{}');
+  const base   = prefix === 'T' ? BASE_TOOLS : BASE_ELECTRONICS;
+  const custom = loadCustomItems();
+  const baseFiltered = getFullList(prefix).slice(0, getFullList(prefix).length - (custom[prefix]||[]).length);
   tbody.innerHTML = '';
 
   data.forEach((item, i) => {
-    const key     = `${prefix}_${i}`;
-    const counted = saved[key] !== undefined ? saved[key] : '';
-    const note    = saved[`${key}_note`] || '';
-    const isNew   = i >= base.length;
+    const key      = `${prefix}_${i}`;
+    const counted  = saved[key] !== undefined ? saved[key] : '';
+    const note     = saved[`${key}_note`] || '';
+    const isCustom = i >= baseFiltered.length;
     const acquired = item.acquired ? `<div class="item-sub">acquired ${item.acquired}</div>` : '';
-    const newBadge = isNew ? `<span class="badge-new">NEW</span>` : '';
-    const delBtn   = isNew
-      ? `<button class="del-btn" title="Remove item" onclick="removeCustomItem('${prefix}',${i - base.length})">✕</button>`
-      : '';
+    const newBadge = isCustom ? `<span class="badge-new">NEW</span>` : '';
+    const delBtn   = `<button class="del-btn" title="Remove item" onclick="removeItem('${prefix}',${i},${isCustom})">✕</button>`;
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td style="color:var(--text-dim);font-family:'Share Tech Mono',monospace;font-size:11px">${String(i+1).padStart(2,'0')}</td>
@@ -780,17 +820,34 @@ function addItem() {
   }
 }
 
-// ── REMOVE CUSTOM ITEM ──
-function removeCustomItem(prefix, customIdx) {
-  const list = getFullList(prefix);
-  const base = prefix === 'T' ? BASE_TOOLS : BASE_ELECTRONICS;
-  const item = list[base.length + customIdx];
-  if (!confirm(`Remove "${item.name}" from inventory?`)) return;
-  const custom = loadCustomItems();
-  custom[prefix].splice(customIdx, 1);
-  saveCustomItems(custom);
+// ── REMOVE ITEM (base or custom) ──
+function removeItem(prefix, listIdx, isCustom) {
+  const item = getFullList(prefix)[listIdx];
+  if (!confirm(`Remove "${item.name}" permanently from inventory?`)) return;
+
+  if (isCustom) {
+    // remove from custom list
+    const custom = loadCustomItems();
+    const baseCount = getFullList(prefix).length - (custom[prefix]||[]).length;
+    custom[prefix].splice(listIdx - baseCount, 1);
+    saveCustomItems(custom);
+  } else {
+    // add to removed list so base item is hidden
+    const removed = loadRemoved();
+    if (!removed[prefix].includes(item.name)) removed[prefix].push(item.name);
+    saveRemoved(removed);
+  }
+
   renderTable(prefix === 'T' ? 'tools-table' : 'elec-table', prefix);
   updateStats();
+}
+
+// ── EDIT MODE TOGGLE ──
+function toggleEditMode() {
+  const active = document.body.classList.toggle('edit-mode');
+  const btn = document.getElementById('edit-btn');
+  btn.textContent = active ? '✔ Done Editing' : '✎ Edit Mode';
+  btn.classList.toggle('active', active);
 }
 
 // ── INIT ──
